@@ -14,12 +14,15 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.imageclassification.ml.DeitTinyPatch16224Fe
 import com.example.imageclassification.ml.MobilevitXxs
 import com.example.imageclassification.ml.MobilevitXxsFlowers
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.text.SimpleDateFormat
 
 class MainActivity : AppCompatActivity() {
 
@@ -27,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var make_prediction : Button
     lateinit var img_view : ImageView
     lateinit var text_view : TextView
+    lateinit var timestamp : TextView
     lateinit var bitmap: Bitmap
     lateinit var camerabtn : Button
 
@@ -65,7 +69,7 @@ class MainActivity : AppCompatActivity() {
         img_view = findViewById(R.id.imageView2)
         text_view = findViewById(R.id.textView)
         camerabtn = findViewById<Button>(R.id.camerabtn)
-
+        timestamp = findViewById<TextView>(R.id.timestamps)
         // handling permissions
         checkandGetpermissions()
 
@@ -73,7 +77,8 @@ class MainActivity : AppCompatActivity() {
 
         select_image_button.setOnClickListener(View.OnClickListener {
             Log.d("mssg", "button pressed")
-            text_view.clearComposingText()
+            text_view.setText("")
+
             var intent : Intent = Intent(Intent.ACTION_GET_CONTENT)
             intent.type = "image/*"
 
@@ -81,26 +86,32 @@ class MainActivity : AppCompatActivity() {
         })
 
         make_prediction.setOnClickListener(View.OnClickListener {
-            var resized = Bitmap.createScaledBitmap(bitmap, 256, 256, true)
+            val startTime = System.currentTimeMillis();
+            var resized = Bitmap.createScaledBitmap(bitmap, 224, 224, true)
             Log.d("bitmap", bitmap.toString())
-            val model = MobilevitXxsFlowers.newInstance(this)
+            val model = DeitTinyPatch16224Fe.newInstance(this)
 
             var tbuffer = TensorImage(DataType.FLOAT32)
             tbuffer.load(resized)
             var byteBuffer: ByteBuffer = tbuffer.buffer
+            // Creates inputs for reference.
 
-            val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1, 256, 256, 3), DataType.FLOAT32)
+            val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1, 224, 224, 3), DataType.FLOAT32)
             inputFeature0.loadBuffer(byteBuffer)
 
+            // Runs model inference and gets result.
             val outputs = model.process(inputFeature0)
             val outputFeature0 = outputs.outputFeature0AsTensorBuffer
+
             Log.d("shape", byteBuffer.toString())
-            Log.d("shape", inputFeature0.buffer.toString())
-            //text_view.setText(outputFeature0.toString())
+            Log.d("shape1", inputFeature0.toString())
+            Log.d("shape2", outputFeature0.floatArray.toString())
+            // Releases model resources if no longer used.
             var max = getMax(outputFeature0.floatArray)
             Log.d("max", max.toString())
             text_view.setText(labels[max])
-
+            val duration = System.currentTimeMillis() - startTime;
+            timestamp.setText("0."+duration.toString()+"(ms)")
             model.close()
         })
 
